@@ -73,9 +73,7 @@ class PrintingPlugin extends PrintingPlatform {
       // Check if the source of PDF.js library is overridden via
       // [dartPdfJsBaseUrl] JavaScript variable.
       if (web.window.hasProperty(_dartPdfJsBaseUrl.toJS).toDart) {
-        _pdfJsUrlBase = web.window
-            .getProperty<js.JSString?>(_dartPdfJsBaseUrl.toJS)!
-            .toDart;
+        _pdfJsUrlBase = web.window.getProperty(_dartPdfJsBaseUrl.toJS);
       } else {
         final pdfJsVersion =
             web.window.hasProperty(_dartPdfJsVersion.toJS).toDart
@@ -303,7 +301,11 @@ class PrintingPlugin extends PrintingPlatform {
   ) async* {
     await _initPlugin();
 
-    final settings = Settings()..data = document.toJS;
+    // PDF.js transfers the ArrayBuffer to its worker (detaching it).
+    // Copy on the JS side so postMessage always gets a transferable buffer.
+    final jsData = Uint8List.fromList(document).toJS.callMethod<js.JSUint8Array>('slice'.toJS);
+    final settings = Settings()..data = jsData;
+
 
     if (!_hasPdfJsLib) {
       settings
